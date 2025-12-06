@@ -41,6 +41,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.antigravity.lights.domain.model.PatternType
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatternCreatorScreen(
@@ -48,6 +52,18 @@ fun PatternCreatorScreen(
     viewModel: PatternCreatorViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showColorPicker by remember { mutableStateOf(false) }
+    
+    if (showColorPicker) {
+        com.antigravity.lights.ui.common.ColorPickerDialog(
+            initialColor = state.currentPattern.colors.firstOrNull() ?: Color.Red,
+            onDismiss = { showColorPicker = false },
+            onColorSelected = { color ->
+                viewModel.updateColor(color)
+                showColorPicker = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -69,7 +85,21 @@ fun PatternCreatorScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Preview
-            PatternPreview(colors = state.previewColors)
+            // If Static, allow clicking to pick color
+            val isStatic = state.currentPattern.type == PatternType.STATIC
+            Box(
+                 modifier = Modifier.clickable(enabled = isStatic) { showColorPicker = true }
+            ) {
+                 PatternPreview(colors = state.previewColors)
+                 if (isStatic) {
+                      Text(
+                          "Tap to change color", 
+                          color = Color.White, 
+                          style = MaterialTheme.typography.labelSmall,
+                          modifier = Modifier.align(Alignment.Center)
+                      )
+                 }
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
             

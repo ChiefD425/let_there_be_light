@@ -86,25 +86,42 @@ class PatternCreatorViewModel @Inject constructor(
     }
     
     fun applyPattern() {
-        discoveryService.log("Applying pattern to $_deviceId...")
+        discoveryService.log("Applying to $_deviceId...")
         viewModelScope.launch {
             val currentPattern = _internalState.value.currentPattern
             
-            // Map PatternType/Colors to ELK-BLEDOM Protocol Pattern IDs
-            // This is a simplification; ideally we have a full lookup table.
+            if (currentPattern.type == PatternType.STATIC) {
+                val color = currentPattern.colors.firstOrNull() ?: Color.White
+                commandExecutor.setColor(_deviceId, color)
+                return@launch
+            }
+            
+            // Map PatternType/Colors to ELK-BLEDOM / Triones Protocol Pattern IDs
+            // 0x25 = Seven Color Cross Fade
+            // 0x26 = Red Gradual Change
+            // 0x27 = Green Gradual Change
+            // ...
+            // 0x38 = Seven Color Strobe Flash
+            
             val patternId = when (currentPattern.type) {
-                PatternType.FADE -> 0x25 // Seven Color Cross Fade (Default for fade)
-                PatternType.WAVE -> 0x38 // Red Green Cross Fade (Arbitrary choice for wave)
-                PatternType.STATIC -> 0x00 // Not really a pattern, but passed anyway
+                PatternType.FADE -> 0x25 
+                PatternType.WAVE -> 0x38 
                 else -> 0x25
             }
             
-            // Speed conversion: 0 (Fast) - 100 (Slow) or inverse?
-            // Usually valid range is 1..100
-            val speedInt = currentPattern.speed.toInt().coerceIn(1, 100)
-            val adjustedSpeed = 100 - speedInt + 1 // Invert so higher value = faster (lower delay)
+            // Speed conversion: 1 (Fast) - 100 (Slow) in some protocols, or inverse.
+            // Triones: 1=Fast, 100=Slow? Or 100=Fast?
+            // Usually it's delay. So 1 = Fast.
+            // Slider is 0.1 .. 50 (Higher = Faster?)
+            // If slider is "Speed", Higher = Faster.
+            // If protocol expects "Delay", we invert.
+            // Let's assume protocol expects delay (1..100).
+            // Slider 50 -> Delay 1. Slider 1 -> Delay 100.
+            val speedInt = (100 - currentPattern.speed.coerceIn(1f, 100f)).toInt()
+            // Ensure min 1
+            val finalSpeed = speedInt.coerceAtLeast(1)
             
-            commandExecutor.setPattern(_deviceId, patternId, adjustedSpeed)
+            commandExecutor.setPattern(_deviceId, patternId, finalSpeed)
         }
     }
 }

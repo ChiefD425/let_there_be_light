@@ -51,4 +51,18 @@ class LightCommandExecutor @Inject constructor(
              }
         }
     }
+
+    suspend fun setColor(id: String, color: androidx.compose.ui.graphics.Color) {
+        if (id.contains(":")) {
+            try {
+                discoveryService.log("Setting Color to $id...")
+                bleClient.write(id, protocol.setColor(color)) { msg -> discoveryService.log(msg) }
+            } catch (e: Exception) {
+                discoveryService.log("Error setting color: ${e.message}")
+                e.printStackTrace()
+            }
+        } else {
+             udpClient.sendBroadcast(5577, protocol.setColor(color))
+        }
+    }
 }
