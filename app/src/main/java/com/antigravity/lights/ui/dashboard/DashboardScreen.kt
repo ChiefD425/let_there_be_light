@@ -77,6 +77,22 @@ fun DashboardScreen(
                                 .padding(bottom = 8.dp)
                         )
                     }
+                    
+                    if (s.logs.isNotEmpty()) {
+                         androidx.compose.material3.Card(
+                             modifier = Modifier.fillMaxWidth().height(150.dp).padding(bottom=8.dp),
+                             colors = androidx.compose.material3.CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                             )
+                         ) {
+                             LazyColumn(modifier = Modifier.padding(8.dp)) {
+                                 items(s.logs) { log ->
+                                     Text(log, style = MaterialTheme.typography.bodySmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                                 }
+                             }
+                         }
+                    }
+
                     if (s.knownDevices.isEmpty() && s.discoveredDevices.isEmpty()) {
                         androidx.compose.foundation.layout.Box(
                             modifier = Modifier.fillMaxSize(),

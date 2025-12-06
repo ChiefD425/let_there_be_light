@@ -26,7 +26,12 @@ class UdpClient @Inject constructor() {
         }
     }
 
-    suspend fun sendAndListen(port: Int, data: ByteArray, timeoutMs: Int = 2000): List<Pair<String, ByteArray>> = withContext(Dispatchers.IO) {
+    suspend fun sendAndListen(
+        port: Int, 
+        data: ByteArray, 
+        timeoutMs: Int = 2000,
+        onLog: (String) -> Unit = {}
+    ): List<Pair<String, ByteArray>> = withContext(Dispatchers.IO) {
         val responses = mutableListOf<Pair<String, ByteArray>>()
         try {
             val socket = DatagramSocket()
@@ -40,6 +45,7 @@ class UdpClient @Inject constructor() {
                 port
             )
             socket.send(packet)
+            // onLog("Broadcast sent to port $port")
 
             val buffer = ByteArray(2048)
             val receivePacket = DatagramPacket(buffer, buffer.size)
@@ -51,17 +57,20 @@ class UdpClient @Inject constructor() {
                     val ip = receivePacket.address.hostAddress
                     val responseData = receivePacket.data.copyOf(receivePacket.length)
                     if (ip != null) {
+                        onLog("Packet received from $ip (${responseData.size} bytes)")
                         responses.add(ip to responseData)
                     }
                 } catch (e: java.net.SocketTimeoutException) {
                     break // Timeout reached
                 } catch (e: Exception) {
+                    onLog("Socket error: ${e.message}")
                     e.printStackTrace()
                     break
                 }
             }
             socket.close()
         } catch (e: Exception) {
+            onLog("Setup error: ${e.message}")
             e.printStackTrace()
         }
         responses

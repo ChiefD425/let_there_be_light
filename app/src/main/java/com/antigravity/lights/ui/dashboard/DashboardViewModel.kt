@@ -25,12 +25,14 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = combine(
         deviceRepository.getAllDevices(),
         discoveryService.discoveredDevices,
-        discoveryService.isScanning
-    ) { local, network, scanning ->
+        discoveryService.isScanning,
+        discoveryService.logs
+    ) { local, network, scanning, logs ->
         DashboardUiState.Success(
             knownDevices = local,
             discoveredDevices = network.filter { n -> local.none { it.id == n.id } },
-            isScanning = scanning
+            isScanning = scanning,
+            logs = logs
         )
     }.stateIn(
         scope = viewModelScope,
@@ -70,6 +72,7 @@ sealed class DashboardUiState {
     data class Success(
         val knownDevices: List<Device>,
         val discoveredDevices: List<Device>,
-        val isScanning: Boolean = false
+        val isScanning: Boolean = false,
+        val logs: List<String> = emptyList()
     ) : DashboardUiState()
 }

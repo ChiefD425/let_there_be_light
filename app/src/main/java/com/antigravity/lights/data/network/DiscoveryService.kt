@@ -17,6 +17,16 @@ class DiscoveryService @Inject constructor(
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
+    private val _logs = MutableStateFlow<List<String>>(emptyList())
+    val logs: StateFlow<List<String>> = _logs.asStateFlow()
+
+    private fun log(msg: String) {
+        val current = _logs.value.toMutableList()
+        if (current.size > 50) current.removeAt(0)
+        current.add(msg)
+        _logs.value = current
+    }
+
     suspend fun startDiscovery() {
         if (_isScanning.value) return
         _isScanning.value = true
@@ -30,16 +40,19 @@ class DiscoveryService @Inject constructor(
             )
 
             val foundDevices = mutableListOf<Device>()
+            
+            log("Starting discovery on ports: $targetPorts")
 
             targetPorts.forEach { port ->
                 payloads.forEach { payload ->
-                    val responses = udpClient.sendAndListen(port, payload, 2000)
+                    log("Sending broadcast to $port...")
+                    val responses = udpClient.sendAndListen(port, payload, 2000, 
+                        onLog = { msg -> log(msg) }
+                    )
+                    log("Received ${responses.size} responses on port $port")
                     responses.forEach { (ip, data) ->
-                        // Simple deduplication based on IP for now
                         val deviceStr = String(data)
-                        // Heuristic: If it responded, it's likely a light. 
-                        // Real parsing would look at the data content (e.g. splitting by comma for MagicHome)
-                        // Example MagicHome response: 192.168.1.100,ACCF235F6FC8,HF-LPB100
+                        log("Response from $ip: $deviceStr")
                         
                         val components = deviceStr.split(",")
                         val id = if (components.size > 1) components[1] else ip
