@@ -31,10 +31,11 @@ class SmartLedProtocol @Inject constructor() : LightProtocol {
     }
     
     override fun setPattern(patternId: Int, speed: Int): ByteArray {
-         // ELK-BLEDOM Pattern/Mode Command attempt #2
-         // Command 0x03 seems to be Mode/Pattern in some variants if 0x05 is Color and 0x01 is Brightness.
-         // Structure: 7E 00 03 [PatternID] [Speed] 00 00 00 EF
+         // ELK-BLEDOM Pattern/Mode Command attempt #3
+         // Command 0x06 matches "visual control / effects" in some docs.
+         // Structure: 7E 00 06 [PatternID] [Speed] 00 00 00 EF
          // Speed: 0x01 (Fast) .. 0xFF (Slow)
-         return byteArrayOf(0x7E, 0x00, 0x03, patternId.toByte(), speed.toByte(), 0x00, 0x00, 0x00, 0xEF.toByte())
+         // PatternID: 0x25 (37) = Seven Color Cross Fade, 0x38 (56) = Red Green Cross Fade
+         return byteArrayOf(0x7E, 0x00, 0x06, patternId.toByte(), speed.toByte(), 0x00, 0x00, 0x00, 0xEF.toByte())
     }
 }

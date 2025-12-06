@@ -43,8 +43,10 @@ class LightCommandExecutor @Inject constructor(
     suspend fun setPattern(id: String, patternId: Int, speed: Int) {
         if (id.contains(":")) {
              try {
-                discoveryService.log("Sending Pattern $patternId (Speed $speed) to $id...")
-                bleClient.write(id, protocol.setPattern(patternId, speed)) { msg -> discoveryService.log(msg) }
+                val data = protocol.setPattern(patternId, speed)
+                val hexString = data.joinToString(separator = " ") { "%02X".format(it) }
+                discoveryService.log("Sending Pattern $patternId (Speed $speed) to $id... [Hex: $hexString]")
+                bleClient.write(id, data) { msg -> discoveryService.log(msg) }
              } catch (e: Exception) {
                  discoveryService.log("Error sending pattern: ${e.message}")
                  e.printStackTrace()
