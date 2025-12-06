@@ -85,20 +85,17 @@ fun PatternCreatorScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Preview
-            // If Static, allow clicking to pick color
-            val isStatic = state.currentPattern.type == PatternType.STATIC
+            // Allow clicking to pick color for any pattern type (simplification)
             Box(
-                 modifier = Modifier.clickable(enabled = isStatic) { showColorPicker = true }
+                 modifier = Modifier.clickable { showColorPicker = true }
             ) {
                  PatternPreview(colors = state.previewColors)
-                 if (isStatic) {
-                      Text(
-                          "Tap to change color", 
-                          color = Color.White, 
-                          style = MaterialTheme.typography.labelSmall,
-                          modifier = Modifier.align(Alignment.Center)
-                      )
-                 }
+                 Text(
+                     "Tap to change color", 
+                     color = Color.White, 
+                     style = MaterialTheme.typography.labelSmall,
+                     modifier = Modifier.align(Alignment.Center)
+                 )
             }
             
             Spacer(modifier = Modifier.height(32.dp))

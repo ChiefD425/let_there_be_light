@@ -12,3 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic Android functionality for Light Controller.
 - Documentation: `agents.md`, `architecture.md`.
 - Open Source standards: `LICENSE`, `CHANGELOG.md`.
+
+### Changed
+- Updated `agents.md` to enforce continuous documentation and smart changelog editing rules.

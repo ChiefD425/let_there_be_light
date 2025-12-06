@@ -51,7 +51,14 @@ class PatternCreatorViewModel @Inject constructor(
 
     fun updateColor(color: Color) {
         val currentPattern = _internalState.value.currentPattern
-        val newColors = if (currentPattern.colors.isEmpty()) listOf(color) else currentPattern.colors + color
+        
+        // For Static mode, we always want a single color.
+        // For others, we might want to add (but for now let's simplify to replace for better UX if single picker)
+        // If we want multi-color pattern creation later, we need a different UI flow.
+        // For now: Always replace the colors list with this single new color
+        // to ensure immediate feedback and "setting the color".
+        val newColors = listOf(color)
+        
         _internalState.value = _internalState.value.copy(
             currentPattern = currentPattern.copy(colors = newColors)
         )
