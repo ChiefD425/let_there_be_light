@@ -4,34 +4,35 @@ import androidx.compose.ui.graphics.Color
 import javax.inject.Inject
 
 class SmartLedProtocol @Inject constructor() : LightProtocol {
-    // Magic bytes for standard Flux/MagicHome controllers
-    // Example: 0x71 0x23 0x0F 0xA3 (ON)
-    // We would need to verify the specific xAPK controller's bytes
+    // ELK-BLEDOM Protocol (Lotus Lantern)
+    // ON: 7E 00 04 F0 00 01 FF 00 EF
+    // OFF: 7E 00 04 00 00 00 FF 00 EF
+    // COLOR: 7E 00 05 03 R G B 00 EF
 
     override fun turnOn(): ByteArray {
-        return byteArrayOf(0x71, 0x23, 0x0F, 0xA3.toByte()) // Placeholder generic ON
+        return byteArrayOf(0x7E, 0x00, 0x04, 0xF0.toByte(), 0x00, 0x01, 0xFF.toByte(), 0x00, 0xEF.toByte())
     }
 
     override fun turnOff(): ByteArray {
-        return byteArrayOf(0x71, 0x24, 0x0F, 0xA4.toByte()) // Placeholder generic OFF
+        return byteArrayOf(0x7E, 0x00, 0x04, 0x00, 0x00, 0x00, 0xFF.toByte(), 0x00, 0xEF.toByte())
     }
 
     override fun setColor(color: Color): ByteArray {
-        // 0x31 R G B 00 00 0F Checksum
-        val r = (color.red * 255).toInt()
-        val g = (color.green * 255).toInt()
-        val b = (color.blue * 255).toInt()
-        val sum = (0x31 + r + g + b + 0x0F) % 256
-        return byteArrayOf(0x31, r.toByte(), g.toByte(), b.toByte(), 0x00, 0x00, 0x0F, sum.toByte())
+        val r = (color.red * 255).toInt().toByte()
+        val g = (color.green * 255).toInt().toByte()
+        val b = (color.blue * 255).toInt().toByte()
+        return byteArrayOf(0x7E, 0x00, 0x05, 0x03, r, g, b, 0x00, 0xEF.toByte())
     }
 
     override fun setBrightness(brightness: Float): ByteArray {
-        // Often integrated into color command, but sometimes separate
-        return byteArrayOf() 
+        // 7E 00 01 [brightness 0-100] 00 00 00 00 EF
+        val bb = (brightness * 100).toInt().toByte()
+        return byteArrayOf(0x7E, 0x00, 0x01, bb, 0x00, 0x00, 0x00, 0x00, 0xEF.toByte()) 
     }
     
     override fun setPattern(patternId: Int): ByteArray {
-         // 0x61 PatternId Speed 0x0F Checksum
-         return byteArrayOf(0x61, patternId.toByte(), 0x05, 0x0F, 0x00) // Placeholder
+         // 7E 00 03 [patternId] 03 00 00 00 EF (Guessing based on structure)
+         // Need to verify exact pattern structure, but this is a safer start
+         return byteArrayOf(0x7E, 0x00, 0x03, patternId.toByte(), 0x03, 0x00, 0x00, 0x00, 0xEF.toByte())
     }
 }
