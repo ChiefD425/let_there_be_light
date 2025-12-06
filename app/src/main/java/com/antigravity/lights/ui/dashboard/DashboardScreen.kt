@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -53,8 +54,8 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* Check for new devices */ }) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
+            FloatingActionButton(onClick = { viewModel.scanForDevices() }) {
+                Icon(Icons.Default.Add, contentDescription = "Scan for Devices")
             }
         }
     ) { padding ->
@@ -69,37 +70,57 @@ fun DashboardScreen(
                     Text("Loading...")
                 }
                 is DashboardUiState.Success -> {
-                    if (s.knownDevices.isNotEmpty()) {
-                        Text(
-                            "My Devices",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                    if (s.isScanning) {
+                        androidx.compose.material3.LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
                         )
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            items(s.knownDevices) { device ->
-                                DeviceItem(
-                                    device = device,
-                                    onToggle = { viewModel.toggleDevice(it) },
-                                    onClick = { onNavigateToPattern(it.id) }
-                                )
+                    }
+                    if (s.knownDevices.isEmpty() && s.discoveredDevices.isEmpty()) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
+                            Text(
+                                "No lights found.\nTap + to scan for devices.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        if (s.knownDevices.isNotEmpty()) {
+                            Text(
+                                "My Devices",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                items(s.knownDevices) { device ->
+                                    DeviceItem(
+                                        device = device,
+                                        onToggle = { viewModel.toggleDevice(it) },
+                                        onClick = { onNavigateToPattern(it.id) }
+                                    )
+                                }
                             }
                         }
-                    }
-                    
-                    if (s.discoveredDevices.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            "Discovered",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            items(s.discoveredDevices) { device ->
-                                DeviceItem(
-                                    device = device,
-                                    onToggle = { /* Can't toggle untracked device */ },
-                                    onClick = { viewModel.addDevice(device) } // Click to add
-                                )
+                        
+                        if (s.discoveredDevices.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                "Discovered",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                items(s.discoveredDevices) { device ->
+                                    DeviceItem(
+                                        device = device,
+                                        onToggle = { /* Can't toggle untracked device */ },
+                                        onClick = { viewModel.addDevice(device) } // Click to add
+                                    )
+                                }
                             }
                         }
                     }

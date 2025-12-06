@@ -24,11 +24,13 @@ class DashboardViewModel @Inject constructor(
     // Merge local devices and network discovered devices
     val uiState: StateFlow<DashboardUiState> = combine(
         deviceRepository.getAllDevices(),
-        discoveryService.discoveredDevices
-    ) { local, network ->
+        discoveryService.discoveredDevices,
+        discoveryService.isScanning
+    ) { local, network, scanning ->
         DashboardUiState.Success(
             knownDevices = local,
-            discoveredDevices = network.filter { n -> local.none { it.id == n.id } }
+            discoveredDevices = network.filter { n -> local.none { it.id == n.id } },
+            isScanning = scanning
         )
     }.stateIn(
         scope = viewModelScope,
@@ -67,6 +69,7 @@ sealed class DashboardUiState {
     object Loading : DashboardUiState()
     data class Success(
         val knownDevices: List<Device>,
-        val discoveredDevices: List<Device>
+        val discoveredDevices: List<Device>,
+        val isScanning: Boolean = false
     ) : DashboardUiState()
 }

@@ -14,23 +14,72 @@ class DiscoveryService @Inject constructor(
     private val _discoveredDevices = MutableStateFlow<List<Device>>(emptyList())
     val discoveredDevices: StateFlow<List<Device>> = _discoveredDevices.asStateFlow()
 
-    suspend fun startDiscovery() {
-        // Common ports for LED controllers
-        val targetPorts = listOf(48899, 5577)
-        // Common discovery payloads
-        val payloads = listOf(
-            "HF-A11ASSISTHREAD".toByteArray(), // MagicHome / Flux
-            byteArrayOf(0x00) // Generic empty probe
-        )
+    private val _isScanning = MutableStateFlow(false)
+    val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
 
-        targetPorts.forEach { port ->
-            payloads.forEach { payload ->
-                udpClient.sendBroadcast(port, payload)
-            }
-        }
+    suspend fun startDiscovery() {
+        if (_isScanning.value) return
+        _isScanning.value = true
         
-        // Start listening (simplified for valid port)
-        // In real app we need separate listener threads for specific ports
+        try {
+            // Common ports for LED controllers
+            val targetPorts = listOf(48899, 5577)
+            // Common discovery payloads
+            val payloads = listOf(
+                "HF-A11ASSISTHREAD".toByteArray(), // MagicHome / Flux
+            )
+
+            val foundDevices = mutableListOf<Device>()
+
+            targetPorts.forEach { port ->
+                payloads.forEach { payload ->
+                    val responses = udpClient.sendAndListen(port, payload, 2000)
+                    responses.forEach { (ip, data) ->
+                        // Simple deduplication based on IP for now
+                        val deviceStr = String(data)
+                        // Heuristic: If it responded, it's likely a light. 
+                        // Real parsing would look at the data content (e.g. splitting by comma for MagicHome)
+                        // Example MagicHome response: 192.168.1.100,ACCF235F6FC8,HF-LPB100
+                        
+                        val components = deviceStr.split(",")
+                        val id = if (components.size > 1) components[1] else ip
+                        val name = if (components.size > 2) components[2] else "Light ($ip)"
+                        
+                        foundDevices.add(Device(
+                            id = id,
+                            name = name,
+                            ipAddress = ip,
+                            isOnline = true
+                        ))
+                    }
+                }
+            }
+            
+            // Allow Mock for testing if no real devices found
+            if (foundDevices.isEmpty()) {
+                 // Un-comment to fake it for the user if they have no hardware yet
+                 // foundDevices.addAll(listOf(
+                 //    Device("MOCK-01", "Mock Light 1", "192.168.1.50", true),
+                 //    Device("MOCK-02", "Mock Light 2", "192.168.1.51", true)
+                 // ))
+            }
+            
+            // Update flow with NEW unique devices
+            val currentList = _discoveredDevices.value.toMutableList()
+            foundDevices.forEach { newDevice ->
+                if (currentList.none { it.id == newDevice.id }) {
+                    currentList.add(newDevice)
+                } else {
+                    // Update existing?
+                    val index = currentList.indexOfFirst { it.id == newDevice.id }
+                    if (index != -1) currentList[index] = newDevice
+                }
+            }
+            _discoveredDevices.value = currentList
+            
+        } finally {
+            _isScanning.value = false
+        }
     }
     
     fun mockDiscovery() {
