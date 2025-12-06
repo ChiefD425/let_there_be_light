@@ -88,11 +88,23 @@ class PatternCreatorViewModel @Inject constructor(
     fun applyPattern() {
         discoveryService.log("Applying pattern to $_deviceId...")
         viewModelScope.launch {
-            // Convert current pattern to byte array (via Protocol, ideally)
-            // For now, sending a placeholder test command to verify connectivity
-            // In real app, we need Pattern -> ByteArray mapper in Protocol
-            val dummyCommand = byteArrayOf(0x7e, 0x05, 0x03, 0x01, 0x02, 0x03, 0xef.toByte()) 
-            commandExecutor.setPattern(_deviceId, dummyCommand)
+            val currentPattern = _internalState.value.currentPattern
+            
+            // Map PatternType/Colors to ELK-BLEDOM Protocol Pattern IDs
+            // This is a simplification; ideally we have a full lookup table.
+            val patternId = when (currentPattern.type) {
+                PatternType.FADE -> 0x25 // Seven Color Cross Fade (Default for fade)
+                PatternType.WAVE -> 0x38 // Red Green Cross Fade (Arbitrary choice for wave)
+                PatternType.STATIC -> 0x00 // Not really a pattern, but passed anyway
+                else -> 0x25
+            }
+            
+            // Speed conversion: 0 (Fast) - 100 (Slow) or inverse?
+            // Usually valid range is 1..100
+            val speedInt = currentPattern.speed.toInt().coerceIn(1, 100)
+            val adjustedSpeed = 100 - speedInt + 1 // Invert so higher value = faster (lower delay)
+            
+            commandExecutor.setPattern(_deviceId, patternId, adjustedSpeed)
         }
     }
 }

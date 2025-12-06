@@ -30,9 +30,12 @@ class SmartLedProtocol @Inject constructor() : LightProtocol {
         return byteArrayOf(0x7E, 0x00, 0x01, bb, 0x00, 0x00, 0x00, 0x00, 0xEF.toByte()) 
     }
     
-    override fun setPattern(patternId: Int): ByteArray {
-         // 7E 00 03 [patternId] 03 00 00 00 EF (Guessing based on structure)
-         // Need to verify exact pattern structure, but this is a safer start
-         return byteArrayOf(0x7E, 0x00, 0x03, patternId.toByte(), 0x03, 0x00, 0x00, 0x00, 0xEF.toByte())
+    override fun setPattern(patternId: Int, speed: Int): ByteArray {
+         // ELK-BLEDOM Pattern/Mode Command
+         // 7E 00 05 02 [PatternID] [Speed] 00 00 EF
+         // Speed is roughly 0-100 or 0-255. High value = Slow? Or Fast?
+         // Usually 0x01 is fast, 0xFF is slow? Or vice versa.
+         // Let's passed speed directly for now.
+         return byteArrayOf(0x7E, 0x00, 0x05, 0x02, patternId.toByte(), speed.toByte(), 0x00, 0x00, 0xEF.toByte())
     }
 }

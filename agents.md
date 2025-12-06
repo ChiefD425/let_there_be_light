@@ -7,8 +7,13 @@ This project follows **Semantic Versioning (SemVer)** (MAJOR.MINOR.PATCH):
 - **PATCH**: Backward-compatible bug fixes.
 
 **Workflow Rules**:
-1. **Update CHANGELOG.md**: Every feature or fix must be logged under the "Unreleased" section in `CHANGELOG.md`.
-2. **Version Bump**: On release, bump the `versionName` and `versionCode` in `app/build.gradle.kts` and move "Unreleased" items to the new version header in `CHANGELOG.md`.
+1. **Continuous Documentation**: You must verify and update `README.md` and feature files (e.g., `architecture.md`) on *every* code change. Ensure documentation stays in sync with code.
+2. **Update CHANGELOG.md**: Every feature or fix must be logged under the "Unreleased" section in `CHANGELOG.md`.
+   - **Smart Editing**: Check for existing subsections (`### Added`, `### Changed`, `### Fixed`, etc.) under `[Unreleased]`.
+   - **Merge Entries**: If the appropriate subsection exists, append your bullet point to it. Do NOT create duplicate headers.
+   - **Create if Missing**: Only create a new subsection if it doesn't exist yet.
+   - **Preserve History**: Keep all entries from the current day/session; do not overwrite them.
+3. **Version Bump**: On release, bump the `versionName` and `versionCode` in `app/build.gradle.kts` and move "Unreleased" items to the new version header in `CHANGELOG.md`.
 
 ## Project Overview
 This is an Android application for controlling addressable LEDs. The app allows users to manage multiple controllers, create custom light patterns, schedule operations, and sync devices.

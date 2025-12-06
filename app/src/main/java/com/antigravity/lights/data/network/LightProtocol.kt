@@ -8,5 +8,5 @@ interface LightProtocol {
     fun turnOff(): ByteArray
     fun setColor(color: Color): ByteArray
     fun setBrightness(brightness: Float): ByteArray // 0.0 - 1.0
-    fun setPattern(patternId: Int): ByteArray
+    fun setPattern(patternId: Int, speed: Int): ByteArray
 }
