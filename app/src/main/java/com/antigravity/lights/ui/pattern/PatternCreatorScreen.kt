@@ -110,6 +110,22 @@ fun PatternCreatorScreen(
             ) {
                 Text("Apply to Device")
             }
+            
+            if (state.logs.isNotEmpty()) {
+                 Spacer(modifier = Modifier.height(16.dp))
+                 androidx.compose.material3.Card(
+                     modifier = Modifier.fillMaxWidth().height(150.dp),
+                     colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                     )
+                 ) {
+                     androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.padding(8.dp)) {
+                         items(state.logs) { log ->
+                             Text(log, style = MaterialTheme.typography.bodySmall, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                         }
+                     }
+                 }
+            }
         }
     }
 }

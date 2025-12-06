@@ -1,20 +1,54 @@
 package com.antigravity.lights.domain.command
 
+import com.antigravity.lights.data.ble.BleClient
+import com.antigravity.lights.data.network.DiscoveryService
 import com.antigravity.lights.data.network.LightProtocol
 import com.antigravity.lights.data.network.UdpClient
 import javax.inject.Inject
 
 class LightCommandExecutor @Inject constructor(
     private val udpClient: UdpClient,
+    private val bleClient: BleClient,
+    private val discoveryService: DiscoveryService,
     private val protocol: LightProtocol
 ) {
-    suspend fun turnOn(ip: String, port: Int = 5577) {
-        udpClient.sendBroadcast(port, protocol.turnOn()) // Currently using broadcast for simplicity, should change to unicast
+    suspend fun turnOn(id: String) {
+        if (id.contains(":")) { // Simple MAC check
+             try {
+                discoveryService.log("Turning ON $id...")
+                bleClient.write(id, protocol.turnOn()) { msg -> discoveryService.log(msg) }
+             } catch (e: Exception) {
+                 discoveryService.log("Error turning ON: ${e.message}")
+                 e.printStackTrace()
+             }
+        } else {
+            udpClient.sendBroadcast(5577, protocol.turnOn())
+        }
     }
     
-    suspend fun turnOff(ip: String, port: Int = 5577) {
-        udpClient.sendBroadcast(port, protocol.turnOff())
+    suspend fun turnOff(id: String) {
+        if (id.contains(":")) {
+             try {
+                discoveryService.log("Turning OFF $id...")
+                bleClient.write(id, protocol.turnOff()) { msg -> discoveryService.log(msg) }
+             } catch (e: Exception) {
+                 discoveryService.log("Error turning OFF: ${e.message}")
+                 e.printStackTrace()
+             }
+        } else {
+            udpClient.sendBroadcast(5577, protocol.turnOff())
+        }
     }
     
-    // In real app we would use TCP socket for persistent connection
+    suspend fun setPattern(id: String, patternData: ByteArray) {
+        if (id.contains(":")) {
+             try {
+                discoveryService.log("Sending Pattern to $id...")
+                bleClient.write(id, patternData) { msg -> discoveryService.log(msg) }
+             } catch (e: Exception) {
+                 discoveryService.log("Error sending pattern: ${e.message}")
+                 e.printStackTrace()
+             }
+        }
+    }
 }

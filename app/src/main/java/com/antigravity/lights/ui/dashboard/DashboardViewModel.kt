@@ -59,9 +59,11 @@ class DashboardViewModel @Inject constructor(
             deviceRepository.updateDeviceStatus(device.id, !device.isOnline) 
             // Send command
              if (device.isOnline) { // Was online, turning off
-                 commandExecutor.turnOff(device.ipAddress)
+                 val target = if (device.ipAddress == "BLE") device.id else device.ipAddress
+                 commandExecutor.turnOff(target)
              } else {
-                 commandExecutor.turnOn(device.ipAddress)
+                 val target = if (device.ipAddress == "BLE") device.id else device.ipAddress
+                 commandExecutor.turnOn(target)
              }
         }
     }

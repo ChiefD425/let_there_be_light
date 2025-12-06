@@ -37,13 +37,36 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    val permissions = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        listOf(
+            android.Manifest.permission.BLUETOOTH_SCAN,
+            android.Manifest.permission.BLUETOOTH_CONNECT,
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    } else {
+        listOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    }
+
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) {
+            viewModel.scanForDevices()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("My Lights") },
                 actions = {
-                    IconButton(onClick = { viewModel.scanForDevices() }) {
+                    IconButton(onClick = { launcher.launch(permissions.toTypedArray()) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Scan")
                     }
                 },
@@ -54,7 +77,7 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.scanForDevices() }) {
+            FloatingActionButton(onClick = { launcher.launch(permissions.toTypedArray()) }) {
                 Icon(Icons.Default.Add, contentDescription = "Scan for Devices")
             }
         }

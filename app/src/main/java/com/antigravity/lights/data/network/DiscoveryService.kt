@@ -7,9 +7,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.antigravity.lights.data.ble.BleScanner
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
 @Singleton
 class DiscoveryService @Inject constructor(
-    private val udpClient: UdpClient
+    private val udpClient: UdpClient,
+    private val bleScanner: BleScanner
 ) {
     private val _discoveredDevices = MutableStateFlow<List<Device>>(emptyList())
     val discoveredDevices: StateFlow<List<Device>> = _discoveredDevices.asStateFlow()
@@ -20,7 +27,7 @@ class DiscoveryService @Inject constructor(
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs: StateFlow<List<String>> = _logs.asStateFlow()
 
-    private fun log(msg: String) {
+    fun log(msg: String) {
         val current = _logs.value.toMutableList()
         if (current.size > 50) current.removeAt(0)
         current.add(msg)
@@ -32,69 +39,52 @@ class DiscoveryService @Inject constructor(
         _isScanning.value = true
         
         try {
-            // Common ports for LED controllers
-            val targetPorts = listOf(48899, 5577)
-            // Common discovery payloads
-            val payloads = listOf(
-                "HF-A11ASSISTHREAD".toByteArray(), // MagicHome / Flux
-            )
-
+            log("Starting discovery...")
             val foundDevices = mutableListOf<Device>()
             
-            log("Starting discovery on ports: $targetPorts")
-
-            targetPorts.forEach { port ->
-                payloads.forEach { payload ->
-                    log("Sending broadcast to $port...")
-                    val responses = udpClient.sendAndListen(port, payload, 2000, 
-                        onLog = { msg -> log(msg) }
-                    )
-                    log("Received ${responses.size} responses on port $port")
-                    responses.forEach { (ip, data) ->
-                        val deviceStr = String(data)
-                        log("Response from $ip: $deviceStr")
-                        
-                        val components = deviceStr.split(",")
-                        val id = if (components.size > 1) components[1] else ip
-                        val name = if (components.size > 2) components[2] else "Light ($ip)"
-                        
-                        foundDevices.add(Device(
-                            id = id,
-                            name = name,
-                            ipAddress = ip,
-                            isOnline = true
-                        ))
+            // Start BLE Scan
+            val bleJob = CoroutineScope(Dispatchers.IO).launch {
+                log("Starting BLE scan...")
+                try {
+                    bleScanner.scan().collect { device ->
+                        if (!foundDevices.any { it.id == device.id }) {
+                            foundDevices.add(device)
+                            log("Found: ${device.name} [${device.id}]")
+                            updateDiscoveredList(foundDevices)
+                        }
                     }
+                } catch (e: Exception) {
+                    log("BLE Scan error: ${e.message}")
                 }
             }
+
+            // Scan for 5 seconds then stop
+            delay(5000)
+            bleJob.cancel()
             
-            // Allow Mock for testing if no real devices found
             if (foundDevices.isEmpty()) {
-                 // Un-comment to fake it for the user if they have no hardware yet
-                 // foundDevices.addAll(listOf(
-                 //    Device("MOCK-01", "Mock Light 1", "192.168.1.50", true),
-                 //    Device("MOCK-02", "Mock Light 2", "192.168.1.51", true)
-                 // ))
+                log("No devices found after scan.")
+            } else {
+                log("Scan complete. Found ${foundDevices.size} devices.")
             }
-            
-            // Update flow with NEW unique devices
-            val currentList = _discoveredDevices.value.toMutableList()
-            foundDevices.forEach { newDevice ->
-                if (currentList.none { it.id == newDevice.id }) {
-                    currentList.add(newDevice)
-                } else {
-                    // Update existing?
-                    val index = currentList.indexOfFirst { it.id == newDevice.id }
-                    if (index != -1) currentList[index] = newDevice
-                }
-            }
-            _discoveredDevices.value = currentList
-            
         } finally {
             _isScanning.value = false
         }
     }
     
+    private fun updateDiscoveredList(foundDevices: List<Device>) {
+        val currentList = _discoveredDevices.value.toMutableList()
+        foundDevices.forEach { newDevice ->
+            if (currentList.none { it.id == newDevice.id }) {
+                currentList.add(newDevice)
+            } else {
+                val index = currentList.indexOfFirst { it.id == newDevice.id }
+                if (index != -1) currentList[index] = newDevice
+            }
+        }
+        _discoveredDevices.value = currentList
+    }
+
     fun mockDiscovery() {
         // For testing UI without devices
         _discoveredDevices.value = listOf(

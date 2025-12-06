@@ -15,19 +15,34 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
+import com.antigravity.lights.data.network.DiscoveryService
+import kotlinx.coroutines.flow.combine
 
 @HiltViewModel
 class PatternCreatorViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val patternGenerator: PatternGenerator,
-    private val commandExecutor: LightCommandExecutor
+    private val commandExecutor: LightCommandExecutor,
+    private val discoveryService: DiscoveryService
 ) : ViewModel() {
 
     private val _deviceId: String = checkNotNull(savedStateHandle["deviceId"])
     
-    private val _uiState = MutableStateFlow(PatternCreatorUiState())
-    val uiState: StateFlow<PatternCreatorUiState> = _uiState.asStateFlow()
+    private val _internalState = MutableStateFlow(PatternCreatorUiState())
+    
+    val uiState: StateFlow<PatternCreatorUiState> = combine(
+        _internalState,
+        discoveryService.logs
+    ) { state, logs ->
+        state.copy(logs = logs)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = PatternCreatorUiState()
+    )
 
     init {
         // Start preview loop
@@ -35,22 +50,22 @@ class PatternCreatorViewModel @Inject constructor(
     }
 
     fun updateColor(color: Color) {
-        val currentPattern = _uiState.value.currentPattern
+        val currentPattern = _internalState.value.currentPattern
         val newColors = if (currentPattern.colors.isEmpty()) listOf(color) else currentPattern.colors + color
-        _uiState.value = _uiState.value.copy(
+        _internalState.value = _internalState.value.copy(
             currentPattern = currentPattern.copy(colors = newColors)
         )
     }
 
     fun updateSpeed(speed: Float) {
-        _uiState.value = _uiState.value.copy(
-            currentPattern = _uiState.value.currentPattern.copy(speed = speed)
+        _internalState.value = _internalState.value.copy(
+            currentPattern = _internalState.value.currentPattern.copy(speed = speed)
         )
     }
     
     fun setPatternType(type: PatternType) {
-        _uiState.value = _uiState.value.copy(
-            currentPattern = _uiState.value.currentPattern.copy(type = type)
+        _internalState.value = _internalState.value.copy(
+            currentPattern = _internalState.value.currentPattern.copy(type = type)
         )
     }
 
@@ -60,18 +75,25 @@ class PatternCreatorViewModel @Inject constructor(
             while (isActive) {
                 val time = System.currentTimeMillis() - startTime
                 val colors = patternGenerator.generateNextFrame(
-                    _uiState.value.currentPattern, 
+                    _internalState.value.currentPattern, 
                     time, 
                     ledCount = 10 // Preview 10 LEDs
                 )
-                _uiState.value = _uiState.value.copy(previewColors = colors)
+                _internalState.value = _internalState.value.copy(previewColors = colors)
                 delay(32) // ~30 FPS
             }
         }
     }
     
     fun applyPattern() {
-        // Send to device logic here
+        discoveryService.log("Applying pattern to $_deviceId...")
+        viewModelScope.launch {
+            // Convert current pattern to byte array (via Protocol, ideally)
+            // For now, sending a placeholder test command to verify connectivity
+            // In real app, we need Pattern -> ByteArray mapper in Protocol
+            val dummyCommand = byteArrayOf(0x7e, 0x05, 0x03, 0x01, 0x02, 0x03, 0xef.toByte()) 
+            commandExecutor.setPattern(_deviceId, dummyCommand)
+        }
     }
 }
 
@@ -83,5 +105,6 @@ data class PatternCreatorUiState(
         colors = listOf(Color.Red, Color.Blue),
         speed = 10f
     ),
-    val previewColors: List<Color> = emptyList()
+    val previewColors: List<Color> = emptyList(),
+    val logs: List<String> = emptyList()
 )
